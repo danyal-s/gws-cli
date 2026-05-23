@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use super::Helper;
+pub mod download;
 pub mod forward;
 pub mod read;
 pub mod reply;
@@ -20,6 +21,7 @@ pub mod send;
 pub mod triage;
 pub mod watch;
 
+use download::handle_download_attachments;
 use forward::handle_forward;
 use read::handle_read;
 use reply::handle_reply;
@@ -1921,6 +1923,47 @@ TIPS:
                 ),
         );
 
+        cmd = cmd.subcommand(
+            Command::new("+download-attachments")
+                .about("[Helper] Download attachments matching a pattern")
+                .arg(
+                    Arg::new("id")
+                        .long("id")
+                        .help("Gmail message ID")
+                        .required(true)
+                        .value_name("ID"),
+                )
+                .arg(
+                    Arg::new("pattern")
+                        .long("pattern")
+                        .help("Regex pattern to match filenames (e.g., 'Invoice.*\\.pdf')")
+                        .value_name("REGEX"),
+                )
+                .arg(
+                    Arg::new("output-dir")
+                        .long("output-dir")
+                        .help("Directory to save files (defaults to current directory)")
+                        .value_name("DIR"),
+                )
+                .arg(
+                    Arg::new("dry-run")
+                        .long("dry-run")
+                        .help("Show which files would be downloaded without saving them")
+                        .action(ArgAction::SetTrue),
+                )
+                .after_help(
+                    "\
+EXAMPLES:
+  gws gmail +download-attachments --id 18f1a2b3c4d
+  gws gmail +download-attachments --id 18f1a2b3c4d --pattern 'Invoice.*\\.pdf'
+  gws gmail +download-attachments --id 18f1a2b3c4d --output-dir ./downloads
+
+TIPS:
+  Filenames are matched against the --pattern regex.
+  If --pattern is omitted, all attachments are downloaded.",
+                ),
+        );
+
         cmd
     }
 
@@ -1963,6 +2006,11 @@ TIPS:
 
             if let Some(matches) = matches.subcommand_matches("+watch") {
                 handle_watch(matches, sanitize_config).await?;
+                return Ok(true);
+            }
+
+            if let Some(matches) = matches.subcommand_matches("+download-attachments") {
+                handle_download_attachments(doc, matches).await?;
                 return Ok(true);
             }
 
